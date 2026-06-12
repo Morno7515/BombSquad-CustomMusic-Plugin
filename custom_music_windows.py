@@ -43,8 +43,6 @@ def _pick_file_windows(title: str = 'Select Music File') -> str | None:
     OFN_PATHMUSTEXIST = 0x00000800
     OFN_HIDEREADONLY  = 0x00000004
     OFN_EXPLORER      = 0x00080000
-    # ИСПРАВЛЕНИЕ: Добавлен OFN_NOCHANGEDIR, чтобы Windows не менял рабочую папку игры
-    # Без этого при выборе файла в C:\Users\Morno\Music игра начинает искать ассеты там
     OFN_NOCHANGEDIR   = 0x00000008
 
     class OPENFILENAMEW(ctypes.Structure):
@@ -89,7 +87,7 @@ def _pick_file_windows(title: str = 'Select Music File') -> str | None:
     return buf.value if result else None
 
 # ---------------------------------------------------------------------------
-# Music player using Windows MCI (winmm.dll) — no external dependencies
+# Music player using Windows MCI (winmm.dll)
 # ---------------------------------------------------------------------------
 # MCI (Media Control Interface) is built into every Windows version.
 # We use mciSendStringW to open/play/stop audio files in a loop thread.
@@ -367,7 +365,7 @@ _MUSIC_TYPE_NAMES_EN: dict[str, str] = {
     'Scary':        'King of the Hill',
     'Marching':     'Runaround',
     'Epic':         'Epic Mode Games',
-    # Unused — no game mode uses these
+    # Unused
     'RunAway':      'Run Away  (Unused)',
     'Sports':       'Sports  (Unused)',
 }
@@ -600,8 +598,7 @@ class MusicManagerWindow(bui.MainWindow):
 
         cfg.commit()
 
-        # ИСПРАВЛЕНИЕ: Пытаемся заставить MusicSubsystem перечитать конфиг
-        # Иначе он играет из кэша, кэш битый -> fallback на "blank" -> краш
+        
         music = babase.app.classic.music
         if hasattr(music, 'set_soundtrack'):
             music.set_soundtrack(cfg.get('Soundtrack', '__default__'))
@@ -610,7 +607,6 @@ class MusicManagerWindow(bui.MainWindow):
         elif hasattr(music, 'apply_config'):
             music.apply_config()
 
-        # Теперь безопасно перезапускаем текущий режим
         try:
             music.set_music_play_mode(
                 babase.app.classic.MusicPlayMode.REGULAR, force_restart=True
@@ -632,7 +628,6 @@ class MusicManagerWindow(bui.MainWindow):
             cfg.commit()
         
         music = babase.app.classic.music
-        # ИСПРАВЛЕНИЕ: Пытаемся заставить MusicSubsystem перечитать конфиг
         if hasattr(music, 'set_soundtrack'):
             music.set_soundtrack(cfg.get('Soundtrack', '__default__'))
         elif hasattr(music, '_reload'):
@@ -675,8 +670,6 @@ class CustomMusicWindowsPlugin(babase.Plugin):
         # (module-load time). Here we just point the music system at our player.
         try:
             music = babase.app.classic.music
-            # ИСПРАВЛЕНИЕ: Добавлен try/except для приватных полей
-            # В следующих версиях BS API может измениться
             music._music_player_type = WindowsMusicPlayer
             music._music_player = None
             print('[CustomMusic] Player installed.')
@@ -692,7 +685,7 @@ def _open_music_manager() -> None:
         win.main_window_replace(lambda: MusicManagerWindow(transition='in_right'))
 
 # ---------------------------------------------------------------------------
-# Inject button at module load time (same approach as working Gemini code)
+
 # ---------------------------------------------------------------------------
 def _inject_music_button() -> None:
     try:
@@ -764,10 +757,7 @@ def _inject_music_button() -> None:
     except Exception as e:
         print(f'[CustomMusic] inject error: {e}')
 
-def _install_player_now() -> None:
-    # Mods load after MusicSubsystem.__init__ and on_app_loading have both
-    # already run, so _music_player_type is still None. We fix that here
-    # and immediately kick off playback for whatever music type is current.
+def _install_player_now() -> None:.
     try:
         music = babase.app.classic.music
         music._music_player_type = WindowsMusicPlayer
